@@ -1,114 +1,199 @@
-//////////////////////////////////////////
-///////        GLOBAL VARS         ///////
-//////////////////////////////////////////
 
-const screenHeight = window.innerHeight;
-const screenWidth = window.innerWidth;
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
-const particleWorldStateObject = [];
-const velocity = 2;
+  ////////////////////////////////////////
+    ///////        GLOBAL VARS         ///////
+    ////////////////////////////////////////
+    const screenHeight = window.innerHeight;
+    const screenWidth = window.innerWidth;
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const NUMPARTICLES = 1;
+    const particleWorldStateObject = {};
+    const velocity = 2;
 
-setCanvasSize();
-main();
+    setCanvasSize();
+    main();
 
+    ////////////////////////////////////////
+    ///////        MAIN FUNC         ///////
+    ////////////////////////////////////////
+    function setCanvasSize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
 
-////////////////////////////////////////
-///////        MAIN FUNC         ///////
-////////////////////////////////////////
-
-function setCanvasSize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
-
-function main() {
-    generateMultipleRoundedRecOnScreen(generateRoundedRectOnScreen, particleWorldStateObject, 1);
-    canvas.addEventListener("click", (e) => {
-        let mouseX = e.pageX;
-        let mouseY = e.pageY;
-
-        particleWorldStateObject.forEach((particle) => {
-            let distanceX = mouseX - particle.x;
-            let distanceY = mouseY - particle.y;
-            let distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
-
-            let forceMagnitude = 2000 / distance; // Adjust the force magnitude as needed
-
-            particle.velocityX += forceMagnitude * (distanceX / distance);
-            particle.velocityY += forceMagnitude * (distanceY / distance);
+    function main() {
+        generateParticleDivElement(NUMPARTICLES);
+        generateMultipleRoundedRecOnScreen(draw, particleWorldStateObject, NUMPARTICLES);
+        document.addEventListener("click", (e) => {
+            let elementId = e.target.id;
+            popCircle(elementId);
         });
-    });
+    }
 
-    animate(); // Start animation loop
-}
-
-function animate() {
-    // Update particles position
-    updateParticles();
-
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Draw particles
-    particleWorldStateObject.forEach((particle) => {
-        generateRoundedRectOnScreen(particle, ctx);
-    });
-
-    // Request next animation frame
-    requestAnimationFrame(animate);
-}
-
-function updateParticles() {
-    particleWorldStateObject.forEach((particle) => {
-        // Update particle position
-        particle.x += particle.velocityX;
-        particle.y += particle.velocityY;
-
-        // Apply friction (optional)
-        particle.velocityX *= 0.99;
-        particle.velocityY *= 0.99;
-
-        // Reset velocity if particle goes off-screen
-        if (particle.x < 0 || particle.x > canvas.width || particle.y < 0 || particle.y > canvas.height) {
-            particle.velocityX = 0;
-            particle.velocityY = 0;
+    function popCircle(elementId) {
+        let particleElement = elementId.startsWith("particle");
+        if (particleElement) {
+            delete particleWorldStateObject[elementId];
+            document.getElementById(elementId).className = "particle is-popping";
         }
-    });
-}
-
-
-////////////////////////////////////////
-/////         EFFECT FUNCS         /////
-////////////////////////////////////////
-
-function generateRoundedRectOnScreen(particle, canvasObj) {
-    const circleRadius = 5;
-    const circleGap = 2;
-    const circlesHorizontal = Math.floor((particle.w - circleGap) / (circleRadius * 2 + circleGap));
-    const circlesVertical = Math.floor((particle.h - circleGap) / (circleRadius * 2 + circleGap));
-
-    for (let i = 0; i < circlesHorizontal * circlesVertical; i++) {
-        const row = Math.floor(i / circlesHorizontal);
-        const col = i % circlesHorizontal;
-
-        const cx = particle.x + particle.radius + circleRadius + col * (circleRadius * 2 + circleGap);
-        const cy = particle.y + particle.radius + circleRadius + row * (circleRadius * 2 + circleGap);
-
-        // Draw a circle
-        canvasObj.beginPath();
-        canvasObj.arc(cx, cy, circleRadius, 0, Math.PI * 2);
-        canvasObj.closePath();
-        canvasObj.stroke();
     }
-}
 
-function generateMultipleRoundedRecOnScreen(generateRoundedRectOnScreenFunc, particleWorldStateObject, numberOfObjOnScreen) {
-    for (let i = 0; i < numberOfObjOnScreen; i++) {
-        randomX = Math.floor(Math.random() * (screenHeight / 2) + 50);
-        randomY = Math.floor(Math.random() * (screenWidth / 2) + 50);
-        const particle = { "x": randomX, "y": randomY, "w": 100, "h": 50, "radius": 100, "velocityX": 0, "velocityY": 0 };
-        generateRoundedRectOnScreenFunc(particle, ctx);
-        particleWorldStateObject.push(particle);
+    ////////////////////////////////////////
+    ///////        FUNCTIONS         ///////
+    ////////////////////////////////////////
+    function generateParticleDivElement(numberOfParticles) {
+        function addEmptyParticleToWorldStateObj(particleWorldStateObject, particleName) {
+            particleWorldStateObject[particleName] = {};
+        }
+
+        for (let i = 0; i < numberOfParticles; i++) {
+            const particleName = `particle${i}`;
+            let newDiv = document.createElement('div');
+            newDiv.id = particleName;
+            newDiv.classList.add("particle");
+            document.body.appendChild(newDiv);
+            addEmptyParticleToWorldStateObj(particleWorldStateObject, particleName);
+        }
     }
-}
+
+    function generateMultipleRoundedRecOnScreen(drawFunc, particleWorldStateObject, numberOfObjOnScreen) {
+        for (let i = 0; i < numberOfObjOnScreen; i++) {
+            const particleName = `particle${i}`;
+            randomX = Math.floor(Math.random() * (screenHeight / 2) + 50);
+            randomY = Math.floor(Math.random() * (screenWidth / 2) + 50);
+            drawFunc(particleWorldStateObject, particleName, ctx, randomX, randomY, 100, 50, 100);
+        }
+    }
+
+    function draw(worldStateObj, particleName, canvasObj, x, y, w, h, borderRadius) {
+        updateParticlePositionObject(worldStateObj, particleName, x, y, w, h, borderRadius);
+        placeElementOnScreen(worldStateObj, particleName);
+    }
+
+    function placeElementOnScreen(worldStateObj, particleName) {
+        const particleDiv = document.getElementById(particleName);
+        const particleObj = worldStateObj[particleName];
+        particleDiv.style.left = particleObj.x + "px";
+        particleDiv.style.top = particleObj.y + "px";
+    }
+
+    function updateParticlePositionObject(worldStateObj, particleName, x, y, w, h, borderRadius) {
+        const particleObj = worldStateObj[particleName];
+        particleObj["x"] = x;
+        particleObj["y"] = y;
+        particleObj["w"] = w;
+        particleObj["h"] = h;
+        particleObj["radii"] = borderRadius;
+    }
+
+
+
+// //////////////////////////////////////////
+// ///////        GLOBAL VARS         ///////
+// //////////////////////////////////////////
+
+// const screenHeight = window.innerHeight
+// const screenWidth = window.innerWidth
+// const canvas = document.getElementById("canvas")
+// const ctx = canvas.getContext("2d")
+// const NUMPARTICLES = 1
+// const particleWorldStateObject = {}
+// const velocity = 2
+
+// setCanvasSize();
+// main();
+
+
+// ////////////////////////////////////////
+// ///////        MAIN FUNC         ///////
+// ////////////////////////////////////////
+
+// function setCanvasSize() {
+//     canvas.width = window.innerWidth;
+//     canvas.height = window.innerHeight;
+// }
+
+// function main() {
+//     generateParticleDivElement(NUMPARTICLES) // one does this once
+//     generateMultipleRoundedRecOnScreen(draw, particleWorldStateObject, NUMPARTICLES);
+//     document.addEventListener("click", (e) => {
+//         let mouseX = e.pageX;
+//         let mouseY = e.pageY;
+
+//         let elementId = e.target.id
+//         popCircle(elementId)
+        
+
+//     });
+
+// }
+
+// function popCircle(elementId){
+//     let particleElement = elementId.startsWith("particle");
+//     if (particleElement){
+//     delete particleWorldStateObject[elementId]; // removes data and data struct (internal representation)
+//     document.getElementById(elementId).className = "is-popping";
+//     // document.getElementById(elementId).remove(); //removes on screen representation (external representation)
+//     }
+// }
+
+
+
+
+// ////////////////////////////////////////
+// ///////        FUNCTIONS         ///////
+// ////////////////////////////////////////
+
+// function setCanvasSize(){
+//     canvas.width = window.innerWidth;
+//     canvas.height = window.innerHeight;
+// }
+
+
+// function generateParticleDivElement(numberOfParticles){
+//     function addEmptyParticleToWorldStateObj(particleWorldStateObject, particleName){
+//         particleWorldStateObject[particleName] = {}
+//     }    
+//     for(let i=0; i < numberOfParticles; i++){
+//         const particleName = `particle${i}`
+//         let newDiv = document.createElement('div');
+//         newDiv.id = particleName;
+//         newDiv.classList.add("particle");
+//         document.body.appendChild(newDiv);
+//         addEmptyParticleToWorldStateObj(particleWorldStateObject, particleName)
+//     }
+// }
+
+
+// function generateMultipleRoundedRecOnScreen(drawFunc, particleWorldStateObject, numberOfObjOnScreen){
+//     for(let i=0; i < numberOfObjOnScreen; i++){
+//         const particleName = `particle${i}`
+//         randomX = Math.floor(Math.random() * (screenHeight/2) + 50) // ACHTUNG
+//         randomY = Math.floor(Math.random() * (screenWidth/2) + 50) // ACHTUNG
+//         drawFunc(particleWorldStateObject, particleName, ctx, randomX, randomY, 100, 50, 100)
+//     }
+// }
+
+
+
+// function draw(worldStateObj, particleName, canvasObj, x, y, w, h, borderRadius){
+//     updateParticlePositionObject(worldStateObj, particleName,x, y, w, h, borderRadius)
+//     placeElementOnScreen(worldStateObj,particleName)
+// }
+
+// function placeElementOnScreen(worldStateObj,particleName) {
+//     const particleDiv = document.getElementById(particleName)
+//     const particleObj = worldStateObj[particleName]
+//     particleDiv.style.left = particleObj.x + "px";
+//     particleDiv.style.top = particleObj.y + "px";
+// }
+
+
+// function updateParticlePositionObject(worldStateObj,particleName,x,y, w, h, borderRadius){
+//     const particleObj = worldStateObj[particleName]
+//     particleObj["x"] = x
+//     particleObj["y"] = y
+//     particleObj["w"] = w
+//     particleObj["h"] = h
+//     particleObj["radii"] = borderRadius
+// }
